@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "in.h": "c",
+        "if_packet.h": "c",
+        "if_ether.h": "c"
+    }
+}
