@@ -20,7 +20,7 @@ static int get_if_info(const char *ifname, uint32_t *ip, char *mac, int *ifindex
 {
     DEBUG("get_if_info for %s", ifname);
     struct ifreq ifr;
-    int sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+    int sd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sd == -1) {
         FATAL("socket()");
         return -1;
@@ -59,7 +59,7 @@ int bind_arp(int ifindex, int *fd)
 {
     DEBUG("bind_arp: ifindex=%i", ifindex);
     DEBUG("Submit request for a raw socket descriptor");
-    *fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
+    *fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (*fd < 1) 
     {
         FATAL("Failed socket()");
@@ -89,7 +89,7 @@ int send_arp(int fd, int ifindex, const unsigned char *src_mac, uint32_t src_ip,
     // special for packet sockets
     struct sockaddr_ll socket_address;
     socket_address.sll_family = AF_PACKET;
-    socket_address.sll_protocol = htons(ETH_P_ARP);
+    socket_address.sll_protocol = htons(ETH_P_ALL);
     socket_address.sll_ifindex = ifindex;
     socket_address.sll_hatype = htons(ARPHRD_ETHER);
     socket_address.sll_pkttype = PACKET_BROADCAST;
@@ -112,14 +112,14 @@ int send_arp(int fd, int ifindex, const unsigned char *src_mac, uint32_t src_ip,
     memcpy(socket_address.sll_addr, src_mac, MAC_ADDRESS_LENGTH);
 
     DEBUG("Setting protocol of the packet");
-    eth_request->h_proto = htons(ETH_P_ARP);
+    eth_request->h_proto = htons(ETH_P_ALL);
 
     DEBUG("Creating ARP request");
     arp_request->hardware_type = htons(HW_TYPE);
     arp_request->protocol_type = htons(ETH_P_IP);
     arp_request->hardware_size = MAC_ADDRESS_LENGTH;
     arp_request->protocol_size = IP_ADDRESS_LENGTH;
-    arp_request->opcode = htons(ARP_REQUEST);
+  //  arp_request->opcode = htons(ARP_REQUEST);
 
     DEBUG("Copy IP address to arp_request");
     memcpy(arp_request->sender_ip, &src_ip, sizeof(uint32_t));
@@ -139,7 +139,7 @@ int send_arp(int fd, int ifindex, const unsigned char *src_mac, uint32_t src_ip,
 
 int read_arp(int fd)
 {
-    // There should be the cycle with N tries
+ while(1) {   // There should be the cycle with N tries
     DEBUG("read_arp");
     unsigned char buffer[ETHERNET_FRAME];
     ssize_t length = recvfrom(fd, buffer, ETHERNET_FRAME, 0, NULL, NULL);
@@ -151,30 +151,31 @@ int read_arp(int fd)
     }
     struct ethhdr *rcv_response = (struct ethhdr *) buffer;
     struct arp_header *arp_response = (struct arp_header *) (buffer + ETH2_HEADER_LEN);
-    if (ntohs(rcv_response->h_proto) != PROTO_ARP)
-    {
-        FATAL("Not an ARP packet");
-        return -1;
-    }
-    if (ntohs(arp_response->opcode) != ARP_REPLY) 
-    {
-        FATAL("Not an ARP reply");
-        return -1;
-    }
-    DEBUG("received ARP len=%ld", length);
+  //  if (ntohs(rcv_response->h_proto) != PROTO_ARP)
+   // {
+    //    FATAL("Not an ARP packet");
+    //    return -1;
+   // }
+//    if (ntohs(arp_response->opcode) != ARP_REPLY) 
+   // {
+  ////      FATAL("Not an ARP reply");
+ //       return -1;
+  //  }
+  //  DEBUG("received ARP len=%ld", length);
     struct in_addr sender;
     memset(&sender, 0, sizeof(struct in_addr));
     memcpy(&sender.s_addr, arp_response->sender_ip, sizeof(uint32_t));
-    DEBUG("Sender IP: %s", inet_ntoa(sender));
+   // DEBUG("Sender IP: %s", inet_ntoa(sender));
 
     fprintf(stdout, "Sender MAC: %02X:%02X:%02X:%02X:%02X:%02X\n",
-          arp_response->sender_mac[0],
-          arp_response->sender_mac[1],
-          arp_response->sender_mac[2],
-          arp_response->sender_mac[3],
-          arp_response->sender_mac[4],
-          arp_response->sender_mac[5]);
+          rcv_response->h_source[0],
+          rcv_response->h_source[1],
+          rcv_response->h_source[2],
+          rcv_response->h_source[3],
+          rcv_response->h_source[4],
+          rcv_response->h_source[5]);
     
+ }
     return 0;
 
 }
