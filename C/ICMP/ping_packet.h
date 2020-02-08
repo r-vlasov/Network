@@ -4,9 +4,9 @@
 #define _PING_PACKET_H
 
 
-#define ICMP_ECHO   8
+#define ICMP_ECHO           8
 #define ICMP_NET_UNREACH	0	
-
+#define RECV_TIMEOUT        1
 struct icmp_packet {
     unsigned char type;
     unsigned char code;
